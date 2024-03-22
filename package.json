@@ -1,0 +1,9 @@
+{
+    "type": "module",
+    "dependencies": {
+        "@google-cloud/local-auth": "^2.1.0",
+        "axios": "^1.6.8",
+        "googleapis": "^105.0.0",
+        "inquirer": "^9.2.16"
+    }
+}
