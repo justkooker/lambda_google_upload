@@ -3,6 +3,8 @@
     "dependencies": {
         "@google-cloud/local-auth": "^2.1.0",
         "axios": "^1.6.8",
+        "config": "^3.3.11",
+        "google-auth-library": "^9.7.0",
         "googleapis": "^105.0.0",
         "inquirer": "^9.2.16"
     }

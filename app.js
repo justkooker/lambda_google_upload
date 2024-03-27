@@ -7,8 +7,8 @@ import { authenticate } from '@google-cloud/local-auth';
 import { google } from 'googleapis';
 const tinyUrlToken = '5rjzM1rTOMcQmYdHxQXdjTxgM92oxYSsIw1j19yoFwHt6HrBENFYFiZOSE3s'
 const SCOPES = ['https://www.googleapis.com/auth/drive'];
-const TOKEN_PATH = path.join(process.cwd(), 'config/token.json');
-const CREDENTIALS_PATH = path.join(process.cwd(), 'config/credentials.json');
+const TOKEN_PATH = path.join(process.cwd(), 'token.json');
+const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
 
 const file = {
     id: '',
@@ -93,78 +93,79 @@ async function uploadFile(authClient, file) {
     }
 }
 
-inquirer.prompt([{
-    type: 'input',
-    name: 'file',
-    message: 'Drop and drag your image in terminal and press enter to upload your file:',
-}]).then((answer) => {
-    if (answer.file) {
-        const arrayFromAnswer = answer.file.split('\\');
-        const name = `${arrayFromAnswer[arrayFromAnswer.length - 1].split('.')[0]}`;
-        const type = `${arrayFromAnswer[arrayFromAnswer.length - 1].split('.')[1]}`;
-        file.path = answer.file;
-        file.type = type;
-        file.name = name;
-    }
-}).then(() => {
-    return new Promise((resolve, reject) => {
-        renameFile().then(() => resolve()).catch(err => reject(err));
-    });
-}).then(async () => {
-    const authClient = await authorize();
-    if (authClient) {
-        await uploadFile(authClient, file)
-    }
-}).then(() => {
+function main(){
     inquirer.prompt([{
-        type: 'confirm',
-        name: 'getViewLink',
-        message: `Would you like to shorten your link?`,
-    }]).then(async (answer) => {
+        type: 'input',
+        name: 'file',
+        message: 'Drop and drag your image in terminal and press enter to upload your file:',
+    }]).then((answer) => {
+        if (answer.file) {
+            const arrayFromAnswer = answer.file.split('\\');
+            const name = `${arrayFromAnswer[arrayFromAnswer.length - 1].split('.')[0]}`;
+            const type = `${arrayFromAnswer[arrayFromAnswer.length - 1].split('.')[1]}`;
+            file.path = answer.file;
+            file.type = type;
+            file.name = name;
+        }
+    }).then(async () => {
+        await renameFile();
+    }).then(async () => {
         const authClient = await authorize();
         if (authClient) {
-            const link = await getFileViewUrl(authClient, file.id)
-            if (answer.getViewLink) {
-                const link = await getFileViewUrl(authClient, file.id);
-                const requestBody = {
-                    "url": link,
-                    "domain": "tinyurl.com",
-                    "description": "string"
-                }
-                const tinyLink = await axios.post('https://api.tinyurl.com/create', requestBody, {
-                    headers: {
-                        'Authorization': `Bearer ${tinyUrlToken}`
-                    }
-                }).then(response => {
-                    if (response.data && response.data.data.tiny_url) {
-                        return response.data.data.tiny_url;
-                    } else {
-                        console.error('Error creating tiny URL: Response format is incorrect');
-                        return null;
-                    }
-                }).catch(err => console.log(err.code))
-                console.log('tiny', tinyLink);
-            } else {
-                console.log(link);
-            }
+            await uploadFile(authClient, file)
         }
-    })
-}).catch(err => console.log(err.code));
-
+    }).then(() => {
+        inquirer.prompt([{
+            type: 'confirm',
+            name: 'getViewLink',
+            message: `Would you like to shorten your link?`,
+        }]).then(async (answer) => {
+            const authClient = await authorize();
+            if (authClient) {
+                const link = await getFileViewUrl(authClient, file.id)
+                if (answer.getViewLink) {
+                    const requestBody = {
+                        "url": link,
+                        "domain": "tinyurl.com",
+                        "description": "string"
+                    }
+                    const tinyLink = await axios.post('https://api.tinyurl.com/create', requestBody, {
+                        headers: {
+                            'Authorization': `Bearer ${tinyUrlToken}`
+                        }
+                    }).then(response => {
+                        if (response.data && response.data.data.tiny_url) {
+                            return response.data.data.tiny_url;
+                        } else {
+                            console.error('Error creating tiny URL: Response format is incorrect');
+                            return null;
+                        }
+                    }).catch(err => console.log(err.code))
+                    console.log('tiny', tinyLink);
+                    main();
+                } else {
+                    console.log(link);
+                    main();
+                }
+            }
+        })
+    }).catch(err => console.log(err.code));
+    
+}
 async function renameFile() {
     const { rename } = await inquirer.prompt([{
         type: 'confirm',
         name: 'rename',
         message: `You're uploading file with the name ${file.name}.${file.type}\n Would you like to rename it?`,
     }]);
-    
+
     if (rename) {
         const { newName } = await inquirer.prompt([{
             type: 'input',
             name: 'newName',
             message: `Enter new file name (WITHOUT extension .jpg, .png, etc):`,
         }]);
-        
+
         file.name = newName;
     }
 }
@@ -183,5 +184,4 @@ async function getFileViewUrl(authClient, fileId) {
     }
 
 }
-
-
+main();
